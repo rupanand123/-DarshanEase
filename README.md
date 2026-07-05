@@ -1,6 +1,7 @@
 # DarshanEase 📿
 
 DarshanEase is a modern, high-fidelity Temple Darshan & Special Pooja Booking platform designed to provide devotees with a seamless, peaceful spiritual planning experience. Skip the long lines and secure holy sights for your family with ease.
+<img width="1920" height="1080" alt="image" src="https://github.com/user-attachments/assets/6b19a518-8343-4a71-8a3b-159cf87379a3" />
 
 ---
 

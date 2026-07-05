@@ -1,0 +1,10 @@
+{
+  "name": "Remix: DarshanEase",
+  "description": "Temple Darshan Ticket Booking platform. Book temple darshan tickets online, browse time slots, choose special entry or VIP entry pooja types, and get instant QR ticket receipts.",
+  "requestFramePermissions": [
+    "camera"
+  ],
+  "majorCapabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
+}

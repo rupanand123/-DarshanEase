@@ -1,0 +1,212 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    
+    // Global Safety Net (default-deny catch-all)
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    // --- REUSABLE GLOBAL HELPERS ---
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isEmailVerified() {
+      return isSignedIn() && request.auth.token.email_verified == true;
+    }
+
+    function isUserOwner(userId) {
+      return isSignedIn() && request.auth.uid == userId;
+    }
+
+    function isBootstrappedAdmin() {
+      return isSignedIn() && 
+             request.auth.token.email == 'rupanandpalakurthi@gmail.com' && 
+             request.auth.token.email_verified == true;
+    }
+
+    function getRole() {
+      return get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role;
+    }
+
+    function isAdmin() {
+      return isSignedIn() && (
+        isBootstrappedAdmin() || (
+          exists(/databases/$(database)/documents/users/$(request.auth.uid)) && 
+          (getRole() == 'super_admin' || getRole() == 'temple_admin')
+        )
+      );
+    }
+
+    function isValidId(id) {
+      return id is string && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
+    }
+
+    function incoming() {
+      return request.resource.data;
+    }
+
+    function existing() {
+      return resource.data;
+    }
+
+    // --- ENTITY SPECIFIC VALIDATION BLUEPRINTS ---
+
+    function isValidUser(data) {
+      return data.userId is string && data.userId.size() <= 128
+          && data.name is string && data.name.size() <= 200
+          && data.email is string && data.email.size() <= 200
+          && (!('phone' in data) || (data.phone is string && data.phone.size() <= 50))
+          && (!('photo' in data) || (data.photo is string && data.photo.size() <= 500))
+          && data.createdAt is string
+          && data.role is string && (data.role == 'devotee' || data.role == 'temple_admin' || data.role == 'super_admin');
+    }
+
+    function isValidTemple(data) {
+      return data.templeId is string && data.templeId.size() <= 128
+          && data.name is string && data.name.size() <= 200
+          && data.location is string && data.location.size() <= 200
+          && data.state is string && data.state.size() <= 200
+          && data.type is string && data.type.size() <= 200
+          && data.description is string && data.description.size() <= 2000
+          && data.history is string && data.history.size() <= 3000
+          && data.openingTime is string && data.openingTime.size() <= 50
+          && data.closingTime is string && data.closingTime.size() <= 50
+          && data.rating is number
+          && data.ticketPrice is number
+          && data.availableSlots is list && data.availableSlots.size() <= 20
+          && data.darshanTypes is list && data.darshanTypes.size() <= 10
+          && data.rules is list && data.rules.size() <= 30
+          && data.facilities is list && data.facilities.size() <= 30
+          && data.image is string && data.image.size() <= 500
+          && data.images is list && data.images.size() <= 10
+          && data.popular is bool;
+    }
+
+    function isValidBooking(data) {
+      return data.bookingId is string && data.bookingId.size() <= 128
+          && data.userId is string && data.userId.size() <= 128
+          && data.userName is string && data.userName.size() <= 200
+          && data.userEmail is string && data.userEmail.size() <= 200
+          && data.templeId is string && data.templeId.size() <= 128
+          && data.templeName is string && data.templeName.size() <= 200
+          && data.templeLocation is string && data.templeLocation.size() <= 200
+          && data.date is string && data.date.size() <= 50
+          && data.slot is string && data.slot.size() <= 100
+          && data.persons is number && data.persons >= 1 && data.persons <= 10
+          && data.price is number && data.price >= 0
+          && data.darshanType is string && data.darshanType.size() <= 100
+          && data.paymentStatus is string && (data.paymentStatus == 'Pending' || data.paymentStatus == 'Paid' || data.paymentStatus == 'Failed')
+          && data.bookingStatus is string && (data.bookingStatus == 'Upcoming' || data.bookingStatus == 'Completed' || data.bookingStatus == 'Cancelled')
+          && (!('qrCode' in data) || (data.qrCode is string && data.qrCode.size() <= 10000))
+          && data.createdAt is string && data.createdAt.size() <= 50;
+    }
+
+    function isValidPayment(data) {
+      return data.paymentId is string && data.paymentId.size() <= 128
+          && data.bookingId is string && data.bookingId.size() <= 128
+          && data.amount is number && data.amount >= 0
+          && data.paymentMethod is string && data.paymentMethod.size() <= 100
+          && data.status is string && (data.status == 'Success' || data.status == 'Failed' || data.status == 'Pending')
+          && data.transactionId is string && data.transactionId.size() <= 128
+          && data.createdAt is string && data.createdAt.size() <= 50;
+    }
+
+    function isValidNotification(data) {
+      return data.notificationId is string && data.notificationId.size() <= 128
+          && data.userId is string && data.userId.size() <= 128
+          && data.title is string && data.title.size() <= 200
+          && data.message is string && data.message.size() <= 1000
+          && data.time is string && data.time.size() <= 50
+          && data.read is bool
+          && (!('type' in data) || (data.type is string && data.type.size() <= 50));
+    }
+
+    // --- COLLECTION PATH MATCHERS ---
+
+    // 1. Users Collection
+    match /users/{userId} {
+      allow get: if isSignedIn() && (isUserOwner(userId) || isAdmin());
+      allow list: if isAdmin();
+      
+      allow create: if isSignedIn() && isUserOwner(userId) && isValidUser(incoming()) && (incoming().role == 'devotee');
+      
+      allow update: if isSignedIn() && (
+        isAdmin() || (
+          isUserOwner(userId) && 
+          isValidUser(incoming()) && 
+          incoming().role == existing().role && 
+          incoming().createdAt == existing().createdAt && 
+          incoming().userId == existing().userId && 
+          incoming().diff(existing()).affectedKeys().hasOnly(['name', 'phone', 'photo', 'favorites'])
+        )
+      );
+      
+      allow delete: if isAdmin();
+    }
+
+    // 2. Temples Collection
+    match /temples/{templeId} {
+      allow read: if true;
+      allow create: if isAdmin() || (isSignedIn() && !exists(/databases/$(database)/documents/temples/$(templeId)) && isValidTemple(incoming()));
+      allow update, delete: if isAdmin();
+    }
+
+    // 3. Bookings Collection
+    match /bookings/{bookingId} {
+      allow get: if isSignedIn() && (resource.data.userId == request.auth.uid || isAdmin());
+      allow list: if isSignedIn() && (resource.data.userId == request.auth.uid || isAdmin());
+      
+      allow create: if isSignedIn() && isEmailVerified() && incoming().userId == request.auth.uid && isValidBooking(incoming());
+      
+      allow update: if isSignedIn() && (
+        isAdmin() || (
+          resource.data.userId == request.auth.uid && 
+          isValidBooking(incoming()) && 
+          incoming().bookingStatus == 'Cancelled' && 
+          existing().bookingStatus != 'Cancelled' && 
+          incoming().diff(existing()).affectedKeys().hasOnly(['bookingStatus'])
+        )
+      );
+      
+      allow delete: if isAdmin();
+    }
+
+    // 4. Payments Collection
+    match /payments/{paymentId} {
+      allow get: if isSignedIn() && (
+        get(/databases/$(database)/documents/bookings/$(resource.data.bookingId)).data.userId == request.auth.uid || 
+        isAdmin()
+      );
+      allow list: if isAdmin();
+      
+      allow create: if isSignedIn() && isEmailVerified() && 
+                    get(/databases/$(database)/documents/bookings/$(incoming().bookingId)).data.userId == request.auth.uid && 
+                    isValidPayment(incoming());
+                    
+      allow update, delete: if isAdmin();
+    }
+
+    // 5. Notifications Collection
+    match /notifications/{notificationId} {
+      allow get: if isSignedIn() && (resource.data.userId == request.auth.uid || isAdmin());
+      allow list: if isSignedIn() && (resource.data.userId == request.auth.uid || isAdmin());
+      
+      allow create: if isSignedIn() && incoming().userId == request.auth.uid && isValidNotification(incoming());
+      
+      allow update: if isSignedIn() && resource.data.userId == request.auth.uid && 
+                    isValidNotification(incoming()) && 
+                    incoming().diff(existing()).affectedKeys().hasOnly(['read']);
+                    
+      allow delete: if isAdmin();
+    }
+
+    // 6. Feedback Collection
+    match /feedback/{feedbackId} {
+      allow read: if true;
+      allow create: if isSignedIn() && isEmailVerified() && incoming().userId == request.auth.uid && isValidFeedback(incoming());
+      allow update, delete: if isAdmin();
+    }
+  }
+}

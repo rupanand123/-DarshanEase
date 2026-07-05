@@ -1,0 +1,137 @@
+{
+  "entities": {
+    "User": {
+      "title": "User",
+      "description": "User profile document",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string" },
+        "name": { "type": "string" },
+        "email": { "type": "string" },
+        "phone": { "type": "string" },
+        "photo": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "role": { "type": "string", "enum": ["devotee", "temple_admin", "super_admin"] }
+      },
+      "required": ["userId", "email"]
+    },
+    "Temple": {
+      "title": "Temple",
+      "description": "Temple document containing details, rules, timings, and available slots",
+      "type": "object",
+      "properties": {
+        "templeId": { "type": "string" },
+        "name": { "type": "string" },
+        "location": { "type": "string" },
+        "description": { "type": "string" },
+        "history": { "type": "string" },
+        "openingTime": { "type": "string" },
+        "closingTime": { "type": "string" },
+        "rating": { "type": "number" },
+        "ticketPrice": { "type": "number" },
+        "availableSlots": { "type": "array" },
+        "darshanTypes": { "type": "array" },
+        "rules": { "type": "array" },
+        "facilities": { "type": "array" },
+        "image": { "type": "string" },
+        "images": { "type": "array" },
+        "popular": { "type": "boolean" },
+        "state": { "type": "string" },
+        "type": { "type": "string" }
+      },
+      "required": ["templeId", "name", "location"]
+    },
+    "Booking": {
+      "title": "Booking",
+      "description": "Booking ticket document",
+      "type": "object",
+      "properties": {
+        "bookingId": { "type": "string" },
+        "userId": { "type": "string" },
+        "templeId": { "type": "string" },
+        "templeName": { "type": "string" },
+        "userName": { "type": "string" },
+        "date": { "type": "string" },
+        "slot": { "type": "string" },
+        "persons": { "type": "number" },
+        "price": { "type": "number" },
+        "darshanType": { "type": "string" },
+        "paymentStatus": { "type": "string" },
+        "bookingStatus": { "type": "string" },
+        "qrCode": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["bookingId", "userId", "templeId", "date", "slot"]
+    },
+    "Payment": {
+      "title": "Payment",
+      "description": "Payment transactions record",
+      "type": "object",
+      "properties": {
+        "paymentId": { "type": "string" },
+        "bookingId": { "type": "string" },
+        "amount": { "type": "number" },
+        "paymentMethod": { "type": "string" },
+        "status": { "type": "string" },
+        "transactionId": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["paymentId", "bookingId", "amount", "status"]
+    },
+    "Notification": {
+      "title": "Notification",
+      "description": "User notification alerts",
+      "type": "object",
+      "properties": {
+        "notificationId": { "type": "string" },
+        "userId": { "type": "string" },
+        "title": { "type": "string" },
+        "message": { "type": "string" },
+        "time": { "type": "string", "format": "date-time" },
+        "read": { "type": "boolean" }
+      },
+      "required": ["notificationId", "userId", "title", "message", "time"]
+    },
+    "Feedback": {
+      "title": "Feedback",
+      "description": "Temple visit feedback and rating",
+      "type": "object",
+      "properties": {
+        "feedbackId": { "type": "string" },
+        "userId": { "type": "string" },
+        "userName": { "type": "string" },
+        "templeId": { "type": "string" },
+        "rating": { "type": "number" },
+        "comment": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["feedbackId", "userId", "userName", "templeId", "rating", "comment", "createdAt"]
+    }
+  },
+  "firestore": {
+    "users/{userId}": {
+      "schema": "User",
+      "description": "User profiles"
+    },
+    "temples/{templeId}": {
+      "schema": "Temple",
+      "description": "Temples registry"
+    },
+    "bookings/{bookingId}": {
+      "schema": "Booking",
+      "description": "Bookings records"
+    },
+    "payments/{paymentId}": {
+      "schema": "Payment",
+      "description": "Payment transactions"
+    },
+    "notifications/{notificationId}": {
+      "schema": "Notification",
+      "description": "Notification records"
+    },
+    "feedback/{feedbackId}": {
+      "schema": "Feedback",
+      "description": "Feedback and review records"
+    }
+  }
+}
